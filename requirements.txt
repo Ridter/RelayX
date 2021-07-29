@@ -1,0 +1,6 @@
+requests==2.25.1
+pyasn1==0.4.8
+impacket==0.9.23
+pycryptodomex==3.10.1
+pyOpenSSL==20.0.1
+config>=0.5.0
