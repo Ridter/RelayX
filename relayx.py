@@ -22,7 +22,7 @@ from minikerberos.common.target import KerberosTarget
 from minikerberos.common.ccache import CCACHE
 from comm import logger
 from comm.ntlmrelayx.attacks import PROTOCOL_ATTACKS
-from comm.reqtgt.gettgtpkinit import myPKINIT
+from comm.ticket.gettgtpkinit import myPKINIT
 from comm.ntlmrelayx.utils.config import NTLMRelayxConfig # add AD CS
 from comm.ntlmrelayx.servers import SMBRelayServer
 from comm.trigger.printer import PrinterBug

