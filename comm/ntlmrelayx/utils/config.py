@@ -96,6 +96,11 @@ class NTLMRelayxConfig:
         self.isADCSAttack = False
         self.template = None
 
+        # shadow Credential Attack
+        self.shadowcredential = False
+        self.kdc = ''
+        self.userDomain = ''
+
     def setSMBChallenge(self, value):
         self.SMBServerChallenge = value
 

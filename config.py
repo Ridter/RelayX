@@ -9,6 +9,8 @@ class global_var:
     dcsync = False
     pki = False
     lock = False
+    pfx_pass = ""
+    pfx_b64 = ""
 
 def set_lock(status):
     global_var.lock = status
@@ -44,6 +46,15 @@ def set_targetName(value):
 def get_targetName():
     return global_var.targetName
 
+def set_pass(value):
+    global_var.pfx_pass = value
+def get_pass():
+    return global_var.pfx_pass
+
+def set_pfx(value):
+    global_var.pfx_b64 = value
+def get_pfx():
+    return global_var.pfx_b64
 
 def set_newPassword(value):
     global_var.newPassword = value

