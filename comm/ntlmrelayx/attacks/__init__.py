@@ -20,30 +20,14 @@ from impacket import LOG
 from threading import Thread
 
 PROTOCOL_ATTACKS = {}
+if getattr(sys, 'frozen', False):
+    # 如果是打包的可执行文件，修改资源目录路径
+    base_path = os.path.join(sys._MEIPASS, 'comm', 'ntlmrelayx', 'attacks')
+else:
+    # 否则，使用默认的资源目录路径
+    base_path = os.path.join('comm', 'ntlmrelayx', 'attacks')
 
-# Base class for Protocol Attacks for different protocols (SMB, MSSQL, etc)
-# Besides using this base class you need to define one global variable when
-# writing a plugin for protocol clients:
-#     PROTOCOL_ATTACK_CLASS = "<name of the class for the plugin>"
-# or (to support multiple classes in one file)
-#     PROTOCOL_ATTACK_CLASSES = ["<name of the class for the plugin>", "<another class>"]
-# These classes must have the attribute PLUGIN_NAMES which is a list of protocol names
-# that will be matched later with the relay targets (e.g. SMB, LDAP, etc)
-class ProtocolAttack(Thread):
-    PLUGIN_NAMES = ['PROTOCOL']
-    def __init__(self, config, client, username):
-        Thread.__init__(self)
-        # Set threads as daemon
-        self.daemon = True
-        self.config = config
-        self.client = client
-        # By default we only use the username and remove the domain
-        self.username = username.split('/')[1]
-
-    def run(self):
-        raise RuntimeError('Virtual Function')
-
-for file in pkg_resources.resource_listdir('comm.ntlmrelayx', 'attacks'):
+for file in os.listdir(base_path):
     if file.find('__') >= 0 or file.endswith('.py') is False:
         continue
     # This seems to be None in some case (py3 only)

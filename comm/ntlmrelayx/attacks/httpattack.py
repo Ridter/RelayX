@@ -22,7 +22,7 @@ import logging
 import config
 import sys
 from OpenSSL import crypto
-from comm.ntlmrelayx.attacks import ProtocolAttack
+from impacket.examples.ntlmrelayx.attacks import ProtocolAttack
 
 
 PROTOCOL_ATTACK_CLASS = "HTTPAttack"
